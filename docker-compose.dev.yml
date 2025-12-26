@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: buyaware-mongo-dev
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: buyaware
+
+  backend:
+    build: ./backend
+    container_name: buyaware-backend-dev
+    command: npm run start:dev
+    volumes:
+      - ./backend:/app
+      # - /app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/buyaware
+      - PORT=3001
+    depends_on:
+      - mongodb
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    # environment:
+    #   - CHOKIDAR_USEPOLLING=true
+    #   - WATCHPACK_POLLING=true
+    container_name: buyaware-frontend-dev
+    command: npm run dev -- --host
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:5173"
+    depends_on:
+      - backend
+  
+  mongo-backup:
+    image: mongo:7
+    container_name: buyaware-mongo-backup
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backups:/backups
+      - ./backups/scripts:/scripts
+    entrypoint: ["/bin/sh", "/scripts/mongo-backup.sh"]
+    restart: "no"
+
+volumes:
+  mongo-data:
